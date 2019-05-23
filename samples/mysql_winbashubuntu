@@ -32,7 +32,7 @@ function Main()
  ? '<br>' + "hMySql="
  ? hb_ntos( hMySql )
 
- nRet := My_Query( hMySql, "SELECT campo1, campo2, campo3, campo4 FROM errors" )
+ nRet := My_Query( hMySql, "SELECT campo1, campo2, campo3, campo4 FROM mytable" )
  nErr := My_ErrNo( hMySql )
  cErr := My_ErrTxt( hMySql )
  ? '<br>' + "Query: "
