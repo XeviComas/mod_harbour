@@ -1,0 +1,181 @@
+#xcommand ? <cText> => AP_RPuts( <cText> )
+
+#define MYSQL_CLIENTLIB "/usr/lib/x86_64-linux-gnu/libmysqlclient.so.20"
+#define CRLF hb_OsNewLine()
+
+#define HB_DYN_CALLCONV_CDECL       0x0000000  // C default
+#define HB_DYN_CTYPE_LONG_UNSIGNED  0x0000014
+#define HB_DYN_CTYPE_CHAR_PTR       0x0000101
+#define HB_DYN_CTYPE_LONG           0x0000004
+#define NULL                        0x0000000
+#define HB_DYN_CTYPE_INT_UNSIGNED   0x0000013
+#define HB_DYN_CTYPE_LLONG_UNSIGNED 0x0000015
+
+STATIC pLib
+
+function Main()
+ local nRet
+ local nErr, cErr
+ local hMySql, hMyRes
+
+ hMySql := My_Init( "127.0.0.1", "user", "passw", "bbdd", 3306, 0 )
+ nErr := My_ErrNo( hMySql )
+ cErr := My_ErrTxt( hMySql )
+ ? '<br>' + "Version: "
+ ? My_Version( hMySql )
+ ? '<br>' + "Error Num: "
+ ? hb_ntos( nErr )
+ ? '<br>' + "Error Txt: "
+ ? cErr
+ ? '<br>' + "pLib="
+ ? pLib
+ ? '<br>' + "hMySql="
+ ? hb_ntos( hMySql )
+
+ nRet := My_Query( hMySql, "SELECT campo1, campo2, campo3, campo4 FROM mytable" )
+ nErr := My_ErrNo( hMySql )
+ cErr := My_ErrTxt( hMySql )
+ ? '<br>' + "Query: "
+ ? hb_ntos( nRet )
+ ? '<br>' + "Error Num: "
+ ? hb_ntos( nErr )
+ ? '<br>' + "Error Txt: "
+ ? cErr
+
+ if nRet == 0
+  hMyRes := My_Result( hMySql )
+  ? '<br>' + "hMyRes:"
+  ? hMyRes
+  ? '<br>' + "Num Fields:"
+  ? My_NumFields(hMyRes)
+  ? '<br>' + "Num Rows  :"
+  ? My_NumRows(hMyRes)
+ endif
+
+ My_Close( pLib )
+
+return nil
+/*------------------------------------------------------------*/
+function My_Init( cHost, cUser, cPass, cDatabase, nPort, nFlag )
+ local hMySql
+
+ pLib := hb_LibLoad( MYSQL_CLIENTLIB )
+
+ hMySql := hb_DynCall( { "mysql_init", pLib, HB_DYN_CALLCONV_CDECL }, NIL )
+
+ if !empty( hMySql )
+? hMySql
+  hb_DynCall( { "mysql_real_connect", pLib, HB_DYN_CALLCONV_CDECL, ;
+              HB_DYN_CTYPE_LONG_UNSIGNED, ; /*MYSQL* connection handler*/
+              HB_DYN_CTYPE_CHAR_PTR     , ; /*const char *host*/
+              HB_DYN_CTYPE_CHAR_PTR     , ; /*const char *user*/
+              HB_DYN_CTYPE_CHAR_PTR     , ; /*const char *passwd*/
+              HB_DYN_CTYPE_CHAR_PTR     , ; /*const char *db*/
+              HB_DYN_CTYPE_LONG         , ; /*unsigned int port*/
+              HB_DYN_CTYPE_CHAR_PTR     , ; /*const char *unix_socket*/
+              HB_DYN_CTYPE_LONG }       , ; /*unsigned long client_flag*/
+              hMySql, cHost, cUser, cPass, cDatabase, nPort, NIL, nFlag )
+ endif
+return hMySql
+/*------------------------------------------------------------*/
+function My_Close( hMySql )
+
+ if !empty( pLib )
+  hb_DynCall( { "mysql_close", pLib, HB_DYN_CALLCONV_CDECL, ;
+                                     HB_DYN_CTYPE_LONG_UNSIGNED }, hMySql )
+ endif
+
+return nil
+/*------------------------------------------------------------*/
+function My_ErrNo( hMySql )
+ local nError := 0
+
+ if !empty( pLib )
+  nError := hb_DynCall( { "mysql_errno", pLib, HB_DYN_CALLCONV_CDECL, ;
+                                               HB_DYN_CTYPE_LONG_UNSIGNED }, hMySql )
+ endif
+
+return nError
+/*------------------------------------------------------------*/
+function My_ErrTxt( hMySql )
+ local cError := ""
+
+ if !empty( pLib )
+  cError := hb_DynCall( { "mysql_error", pLib, hb_bitOr( HB_DYN_CTYPE_CHAR_PTR, HB_DYN_CALLCONV_CDECL ), ;
+                                               HB_DYN_CTYPE_LONG_UNSIGNED }, hMySql )
+ endif
+
+return cError
+/*------------------------------------------------------------*/
+function My_Query( hMySql, cQuery )
+ local nRet
+ local nLen := len(cQuery)
+ ?cQuery
+ if !empty( pLib )
+  nRet := hb_DynCall( { "mysql_real_query", pLib, HB_DYN_CALLCONV_CDECL, ;
+                         HB_DYN_CTYPE_LONG_UNSIGNED  , ; /*MYSQL *mysql*/
+                         HB_DYN_CTYPE_CHAR_PTR       , ; /*const char *stmt_str*/
+                         HB_DYN_CTYPE_LONG_UNSIGNED }, ; /*unsigned long length*/
+                         hMySql, cQuery, nLen )
+ endif
+
+return nRet
+/*------------------------------------------------------------*/
+function My_Result( hMySql )
+ local pMyRes
+
+ if !empty( pLib )
+  pMyRes := hb_DynCall( { "mysql_store_result", pLib, HB_DYN_CALLCONV_CDECL, ;
+                                                      HB_DYN_CTYPE_LONG_UNSIGNED }, hMySql )
+ endif
+return pMyRes
+/*------------------------------------------------------------*/
+function My_ResFree( hMyRes )
+
+ if !empty( pLib )
+  hb_DynCall( { "mysql_free_result", pLib, HB_DYN_CALLCONV_CDECL, ;
+                                           HB_DYN_CTYPE_LONG_UNSIGNED }, hMyRes )
+ endif
+
+return nil
+/*------------------------------------------------------------*/
+function My_Version( hMySql )
+ local cVersion := ""
+
+ if !empty( pLib )
+  cVersion := hb_DynCall( { "mysql_get_server_info", pLib, hb_bitOr( HB_DYN_CTYPE_CHAR_PTR, HB_DYN_CALLCONV_CDECL ), ;
+                                                           HB_DYN_CTYPE_LONG_UNSIGNED }, hMySql )
+ endif
+
+return cVersion
+/*------------------------------------------------------------*/
+function My_NumRows( hMyRes )
+ local nRows := 0
+
+ if !empty( pLib ) .and. !empty( hMyRes )
+  nRows := hb_DynCall( { "mysql_num_rows", pLib, hb_bitOr( HB_DYN_CALLCONV_CDECL, HB_DYN_CTYPE_LLONG_UNSIGNED), ;
+                                                  HB_DYN_CTYPE_LLONG_UNSIGNED }, hMyRes )
+ endif
+
+return nRows
+/*------------------------------------------------------------*/
+function My_NumFields( hMyRes )
+ local nFields := 0
+
+ if !empty( pLib ) .and. !empty( hMyRes )
+  nFields := hb_DynCall( { "mysql_num_fields", pLib, hb_bitOr( HB_DYN_CALLCONV_CDECL, HB_DYN_CTYPE_INT_UNSIGNED ), ;
+                                                    HB_DYN_CTYPE_LLONG_UNSIGNED }, hMyRes )
+ endif
+
+return nFields
+/*------------------------------------------------------------*/
+function My_FetchRow( hMyRes )
+ local hRow
+
+ if !empty( pLib ) .and. !empty( hMyRes )
+  hRow := hb_DynCall( { "mysql_fetch_row", pLib, HB_DYN_CALLCONV_CDECL, ;
+                                                 HB_DYN_CTYPE_LONG_UNSIGNED }, hMyRes )
+ endif
+
+return hRow
+/*------------------------------------------------------------*/
